@@ -4,7 +4,7 @@ Automatically collect voltage data from Tuya smart plug energy monitors every 5 
 
 ## Features
 
-- 📊 Collects voltage, current, and power data from Tuya smart plugs
+- 📊 Collects voltage data from Tuya smart plug energy monitors
 - ⏰ Configurable collection interval (default: 5 minutes)
 - 💾 Stores data in PostgreSQL for long-term analysis
 - ☁️ Runs continuously on Railway (no local computer needed)
@@ -51,22 +51,24 @@ Check the Railway logs to see:
 ✓ Connected to database
 ✓ Database schema initialized
 [2025-11-02 10:00:00] Collection #1
-✓ device1: 120.5V, 0.234A, 28.2W
-✓ device2: 119.8V, 0.156A, 18.7W
+✓ device1: 120.5V
+✓ device2: 119.8V
 ✓ Stored 2 reading(s)
 ```
 
 ## Database Schema
 
+All timestamps are stored in **Brazilian time (GMT-3)** as naive timestamps (no timezone offset).
+
+When you query the database, you'll see the actual Brazilian time directly, without needing to calculate timezone conversions.
+
 ```sql
 CREATE TABLE voltage_readings (
     id SERIAL PRIMARY KEY,
     device_id VARCHAR(100) NOT NULL,
-    timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+    timestamp TIMESTAMP NOT NULL,      -- Brazilian time (GMT-3)
     voltage REAL NOT NULL,
-    current REAL,
-    power REAL,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP NOT NULL      -- Brazilian time (GMT-3)
 );
 ```
 
