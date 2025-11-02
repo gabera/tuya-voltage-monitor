@@ -101,7 +101,9 @@ class TuyaCollector:
         """Test if we can connect to Tuya cloud and access devices"""
         try:
             devices = self.cloud.getdevices()
-            if devices:
+            print(f"Debug: API returned: {devices}")
+
+            if devices and isinstance(devices, list) and len(devices) > 0:
                 print(f"✓ Successfully connected to Tuya Cloud")
                 print(f"  Found {len(devices)} device(s) in your account")
 
@@ -113,7 +115,10 @@ class TuyaCollector:
                 return True
             else:
                 print("✗ Connected but no devices found")
+                print(f"  Make sure you've linked your Tuya app account at https://iot.tuya.com")
                 return False
         except Exception as e:
             print(f"✗ Connection test failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
