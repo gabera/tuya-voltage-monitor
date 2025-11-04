@@ -9,6 +9,11 @@ Automatically collect voltage data from Tuya smart plug energy monitors every 5 
 - 💾 Stores data in PostgreSQL for long-term analysis
 - ☁️ Runs continuously on Railway (no local computer needed)
 - 🔍 Indexed database for fast queries
+- 📈 **Web Dashboard** with interactive graphs and filters:
+  - View data by hour, day, or month
+  - Filter by voltage thresholds (min/max)
+  - Compare multiple devices on the same graph
+  - Real-time statistics and auto-refresh
 
 ## Setup
 
@@ -43,9 +48,21 @@ Automatically collect voltage data from Tuya smart plug energy monitors every 5 
    - `DEVICE_IDS` - Comma-separated device IDs (e.g., `device1,device2`)
    - `COLLECTION_INTERVAL` - Optional, seconds between collections (default: 300)
 
-### 3. Verify It's Running
+### 3. Access the Dashboard
 
-Check the Railway logs to see:
+Once deployed, Railway will provide two URLs:
+- **Worker Service**: Data collector (runs in background)
+- **Web Service**: Dashboard at `https://your-app.up.railway.app`
+
+Open the web URL to access the interactive dashboard with:
+- Real-time voltage graphs
+- Time scale filters (hour/day/month)
+- Voltage threshold filters
+- Device statistics
+
+### 4. Verify Collector is Running
+
+Check the Railway logs for the worker service to see:
 ```
 ✓ Tuya collector initialized for 2 device(s)
 ✓ Connected to database
@@ -72,9 +89,39 @@ CREATE TABLE voltage_readings (
 );
 ```
 
-## Querying Your Data
+## Web Dashboard
 
-Connect to your Railway PostgreSQL database to analyze the data:
+The dashboard provides an intuitive interface to visualize your voltage data:
+
+### Features
+- **Interactive Line Chart**: Visualize voltage trends over time
+- **Time Scale Options**:
+  - Real-time (raw data points)
+  - Hourly aggregation
+  - Daily aggregation
+  - Monthly aggregation
+- **Time Range Filters**: Last 6h, 12h, 24h, 48h, week, or month
+- **Voltage Filters**: Set min/max voltage thresholds to highlight specific ranges
+- **Device Filtering**: View all devices or focus on a specific one
+- **Auto-refresh**: Dashboard updates every 5 minutes
+- **Statistics Cards**: See average, min, max voltage and total readings per device
+
+### API Endpoints
+
+The dashboard uses REST API endpoints that you can also use directly:
+
+- `GET /api/devices` - List all monitored devices
+- `GET /api/stats` - Get statistics for all devices
+- `GET /api/data?scale=hour&hours=24` - Get voltage data with filters
+
+Example API query with filters:
+```bash
+curl "https://your-app.up.railway.app/api/data?scale=hour&hours=48&min_voltage=210&max_voltage=230"
+```
+
+## Querying Your Data Directly
+
+You can also connect to your Railway PostgreSQL database to analyze the data:
 
 ```sql
 -- Get latest readings
