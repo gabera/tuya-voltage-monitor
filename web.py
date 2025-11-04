@@ -178,8 +178,17 @@ def get_devices():
 
 @app.route('/api/stats')
 def get_stats():
-    """Get overall statistics"""
+    """Get statistics based on time filter"""
     db = get_db()
+
+    # Get time filter from query params
+    hours = int(request.args.get('hours', 24))
+    min_voltage = request.args.get('min_voltage', type=float)
+    max_voltage = request.args.get('max_voltage', type=float)
+    device_id = request.args.get('device_id')
+
+    # Calculate time window
+    time_window = datetime.now() - timedelta(hours=hours)
 
     query = """
     SELECT
@@ -191,13 +200,30 @@ def get_stats():
         MIN(timestamp) as first_reading,
         MAX(timestamp) as last_reading
     FROM voltage_readings
-    GROUP BY device_id
-    ORDER BY device_id
+    WHERE timestamp >= %s
     """
+
+    params = [time_window]
+
+    # Add voltage filters
+    if min_voltage is not None:
+        query += " AND voltage >= %s"
+        params.append(min_voltage)
+
+    if max_voltage is not None:
+        query += " AND voltage <= %s"
+        params.append(max_voltage)
+
+    # Add device filter
+    if device_id:
+        query += " AND device_id = %s"
+        params.append(device_id)
+
+    query += " GROUP BY device_id ORDER BY device_id"
 
     try:
         with db.conn.cursor() as cur:
-            cur.execute(query)
+            cur.execute(query, params)
             rows = cur.fetchall()
 
         stats = []
@@ -215,7 +241,8 @@ def get_stats():
         db.close()
         return jsonify({
             'success': True,
-            'stats': stats
+            'stats': stats,
+            'hours': hours
         })
 
     except Exception as e:
