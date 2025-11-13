@@ -119,11 +119,17 @@ def get_data():
             rows = cur.fetchall()
 
         # Format results
+        # Add Brazilian timezone offset to timestamps so JavaScript interprets them correctly
         data = []
         for row in rows:
+            timestamp_str = None
+            if row[1]:
+                # Add -03:00 offset to indicate Brazilian time (BRT)
+                timestamp_str = row[1].isoformat() + '-03:00'
+
             data.append({
                 'device_id': row[0],
-                'timestamp': row[1].isoformat() if row[1] else None,
+                'timestamp': timestamp_str,
                 'avg_voltage': float(row[2]) if row[2] else None,
                 'min_voltage': float(row[3]) if row[3] else None,
                 'max_voltage': float(row[4]) if row[4] else None,
@@ -228,14 +234,18 @@ def get_stats():
 
         stats = []
         for row in rows:
+            # Add Brazilian timezone offset to timestamps
+            first_reading_str = row[5].isoformat() + '-03:00' if row[5] else None
+            last_reading_str = row[6].isoformat() + '-03:00' if row[6] else None
+
             stats.append({
                 'device_id': row[0],
                 'total_readings': row[1],
                 'avg_voltage': float(row[2]) if row[2] else None,
                 'min_voltage': float(row[3]) if row[3] else None,
                 'max_voltage': float(row[4]) if row[4] else None,
-                'first_reading': row[5].isoformat() if row[5] else None,
-                'last_reading': row[6].isoformat() if row[6] else None
+                'first_reading': first_reading_str,
+                'last_reading': last_reading_str
             })
 
         db.close()
