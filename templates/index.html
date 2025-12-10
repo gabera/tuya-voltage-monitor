@@ -246,6 +246,7 @@
 
     <script>
         let chart = null;
+        let deviceNames = {}; // Cache for device names
         const colors = [
             '#007bff',
             '#28a745',
@@ -255,14 +256,37 @@
             '#6f42c1'
         ];
 
+        // Get device display name (use name from Tuya or fall back to ID)
+        function getDeviceName(deviceId) {
+            return deviceNames[deviceId] || deviceId;
+        }
+
         // Initialize
         async function init() {
+            await loadDeviceNames();
             await loadDevices();
             await loadStats();
             await loadData();
 
             // Auto-refresh every 5 minutes
             setInterval(loadData, 5 * 60 * 1000);
+        }
+
+        // Load device names from Tuya API
+        async function loadDeviceNames() {
+            try {
+                const response = await fetch('/api/device-names');
+                const result = await response.json();
+
+                if (result.success) {
+                    deviceNames = result.devices;
+                    console.log('Device names loaded:', deviceNames);
+                } else {
+                    console.error('Failed to load device names:', result.error);
+                }
+            } catch (error) {
+                console.error('Error loading device names:', error);
+            }
         }
 
         // Load device list
@@ -276,7 +300,7 @@
                     result.devices.forEach(device => {
                         const option = document.createElement('option');
                         option.value = device;
-                        option.textContent = device;
+                        option.textContent = getDeviceName(device);
                         select.appendChild(option);
                     });
                 }
@@ -309,7 +333,7 @@
                         const card = document.createElement('div');
                         card.className = 'stat-card';
                         card.innerHTML = `
-                            <div class="stat-label">${stat.device_id}</div>
+                            <div class="stat-label">${getDeviceName(stat.device_id)}</div>
                             <div class="stat-value">
                                 ${stat.avg_voltage.toFixed(1)} <span class="stat-unit">V</span>
                             </div>
@@ -373,7 +397,7 @@
             // Create datasets
             const datasets = Object.keys(deviceData).map((deviceId, index) => {
                 return {
-                    label: deviceId,
+                    label: getDeviceName(deviceId),
                     data: deviceData[deviceId].map(p => ({
                         x: new Date(p.timestamp),
                         y: p.avg_voltage
@@ -455,7 +479,7 @@
                 item.className = 'legend-item';
                 item.innerHTML = `
                     <div class="legend-color" style="background: ${colors[index % colors.length]}"></div>
-                    <span>${device}</span>
+                    <span>${getDeviceName(device)}</span>
                 `;
                 legend.appendChild(item);
             });

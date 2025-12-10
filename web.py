@@ -2,6 +2,7 @@
 import os
 from flask import Flask, render_template, jsonify, request
 from database import VoltageDatabase
+from collector import TuyaCollector
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -9,6 +10,14 @@ app = Flask(__name__)
 def get_db():
     """Get database connection"""
     return VoltageDatabase()
+
+def get_tuya_collector():
+    """Get Tuya collector instance"""
+    try:
+        return TuyaCollector()
+    except Exception as e:
+        print(f"Error initializing Tuya collector: {e}")
+        return None
 
 @app.route('/')
 def index():
@@ -177,6 +186,46 @@ def get_devices():
 
     except Exception as e:
         db.close()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/device-names')
+def get_device_names():
+    """Get device names from Tuya API"""
+    collector = get_tuya_collector()
+
+    if not collector:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to initialize Tuya collector'
+        }), 500
+
+    try:
+        # Get all devices from Tuya Cloud
+        devices = collector.cloud.getdevices()
+
+        if not devices or not isinstance(devices, list):
+            return jsonify({
+                'success': False,
+                'error': 'No devices found or invalid response'
+            }), 404
+
+        # Create a mapping of device_id to device_name
+        device_map = {}
+        for device in devices:
+            device_id = device.get('id')
+            device_name = device.get('name', device_id)
+            if device_id:
+                device_map[device_id] = device_name
+
+        return jsonify({
+            'success': True,
+            'devices': device_map
+        })
+
+    except Exception as e:
         return jsonify({
             'success': False,
             'error': str(e)
