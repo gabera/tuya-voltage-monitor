@@ -98,9 +98,12 @@ class TuyaCollector:
 
                 return True
             else:
-                print("✗ Connected but no devices found")
-                print(f"  Make sure you've linked your Tuya app account at https://iot.tuya.com")
-                return False
+                print("⚠ getdevices() returned empty list")
+                print(f"  This is OK - will collect data directly from configured DEVICE_IDS")
+                print(f"\n  Configured devices to monitor:")
+                for device_id in self.device_ids:
+                    print(f"    - {device_id}")
+                return True  # Continue anyway - we can collect data using device IDs directly
         except Exception as e:
             print(f"✗ Connection test failed: {e}")
             import traceback

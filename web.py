@@ -4,6 +4,10 @@ from flask import Flask, render_template, jsonify, request
 from database import VoltageDatabase
 from collector import TuyaCollector
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -193,7 +197,7 @@ def get_devices():
 
 @app.route('/api/device-names')
 def get_device_names():
-    """Get device names from Tuya API"""
+    """Get device names using hybrid approach with multiple fallbacks"""
     collector = get_tuya_collector()
 
     if not collector:
@@ -202,23 +206,67 @@ def get_device_names():
             'error': 'Failed to initialize Tuya collector'
         }), 500
 
+    device_map = {}
+
     try:
-        # Get all devices from Tuya Cloud
+        # Level 1: Try getdevices() first (most efficient if it works)
         devices = collector.cloud.getdevices()
-
-        if not devices or not isinstance(devices, list):
+        if devices and isinstance(devices, list) and len(devices) > 0:
+            for device in devices:
+                device_id = device.get('id')
+                device_name = device.get('name', device_id)
+                if device_id:
+                    device_map[device_id] = device_name
             return jsonify({
-                'success': False,
-                'error': 'No devices found or invalid response'
-            }), 404
+                'success': True,
+                'devices': device_map
+            })
 
-        # Create a mapping of device_id to device_name
-        device_map = {}
-        for device in devices:
-            device_id = device.get('id')
-            device_name = device.get('name', device_id)
-            if device_id:
-                device_map[device_id] = device_name
+        # Level 2: Try getstatus() for each device_id individually
+        print("Trying to get device names via getstatus()...")
+        device_ids = collector.device_ids
+        for device_id in device_ids:
+            try:
+                status = collector.cloud.getstatus(device_id)
+                # Try to extract name from status
+                name = None
+                if status and isinstance(status, dict):
+                    if 'name' in status:
+                        name = status['name']
+                    elif 'result' in status and isinstance(status['result'], dict):
+                        name = status['result'].get('name')
+
+                if name:
+                    device_map[device_id] = name
+                    print(f"  Found name for {device_id}: {name}")
+                else:
+                    device_map[device_id] = device_id
+            except Exception as e:
+                print(f"  Failed to get name for {device_id}: {e}")
+                device_map[device_id] = device_id
+
+        # If we got at least some names via API, return
+        if device_map:
+            return jsonify({
+                'success': True,
+                'devices': device_map
+            })
+
+        # Level 3: Use DEVICE_NAMES from environment
+        print("Falling back to DEVICE_NAMES from environment...")
+        device_names_str = os.getenv('DEVICE_NAMES', '')
+        if device_names_str:
+            device_names = [n.strip() for n in device_names_str.split(',')]
+            for i, device_id in enumerate(device_ids):
+                if i < len(device_names):
+                    device_map[device_id] = device_names[i]
+                else:
+                    device_map[device_id] = device_id
+        else:
+            # Level 4: Final fallback - use device IDs
+            print("No DEVICE_NAMES configured, using device IDs")
+            for device_id in device_ids:
+                device_map[device_id] = device_id
 
         return jsonify({
             'success': True,
@@ -226,6 +274,7 @@ def get_device_names():
         })
 
     except Exception as e:
+        print(f"Error in get_device_names: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
