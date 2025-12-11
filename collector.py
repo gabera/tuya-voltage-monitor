@@ -44,9 +44,11 @@ class TuyaCollector:
         try:
             # Get device status
             status = self.cloud.getstatus(device_id)
+            print(f"Debug: getstatus({device_id}) returned: {status}")
 
             if not status or 'result' not in status:
                 print(f"✗ No data returned for device {device_id}")
+                print(f"  Status response: {status}")
                 return None
 
             # Parse the result
