@@ -14,7 +14,7 @@ def main():
     load_dotenv()
 
     print("=" * 60)
-    print("Tuya Voltage Monitor")
+    print("Tuya Voltage Monitor - WORKER - Data Collection Script")
     print("=" * 60)
 
     # Get collection interval
